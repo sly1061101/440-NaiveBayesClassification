@@ -11,7 +11,8 @@
 #include <time.h>
 #include <math.h>
 
-#define k 0.5
+#define k 0.1
+#define v 2
 
 int main(){
     char data[28][29] = {0};
@@ -47,25 +48,28 @@ int main(){
     
     //calculate p(class) and p(feature == 1 | class)
     float total_class = 0;
-    
+
     for(int i = 0; i < 10; ++i){
         total_class += raw_data[i][0];
     }
-    for(int i = 0; i < 10; ++i){
-        final_data[i][0] = raw_data[i][0] / total_class;
-        for(int j = 1; j < 785; ++j){
-            if(raw_data[i][j] != 0)
-                final_data[i][j] = raw_data[i][j] / total_class;
-            else
-                final_data[i][j] = k / (total_class + 2*k);
-        }
-    }
+//    for(int i = 0; i < 10; ++i){
+//        final_data[i][0] = raw_data[i][0] / total_class;
+//        for(int j = 1; j < 785; ++j){
+//            if(raw_data[i][j] != 0)
+//                final_data[i][j] = raw_data[i][j] / total_class;
+//            else
+//                final_data[i][j] = k / (total_class + 2*k);
+//        }
+//    }
     
     //calculate the posteriors and make the decision
     float posterior[10];
     
     int total = 0;
     int error = 0;
+    int total_digit[10] = {0};
+    int error_digit[10] = {0};
+    int confusion[10][10] = {0};
     
     FILE *pf_test_data;
     FILE *pf_test_label;
@@ -75,6 +79,7 @@ int main(){
         total++;
         int num;
         num = label[0] - '0';
+        total_digit[num]++;
         
         for(int i = 0; i < 28; ++i){
             fread(data[i], sizeof(char), 29, pf_test_data);
@@ -83,14 +88,14 @@ int main(){
         float max = -99999999999999;
         int num_dec = 0;
         for(int h = 0; h < 10; h++){
-            posterior[h] = log( final_data[h][0] );//final_data[h][0];
+            posterior[h] = log( raw_data[h][0] / total_class );//final_data[h][0];
             for(int i = 0; i < 28; ++i){
                 for(int j = 0; j < 28; ++j){
                     if( (data[i][j] == '#') || (data[i][j] == '+') ){
-                        posterior[h] += log(final_data[h][i*28 + j]);
+                        posterior[h] += log( (1.0*raw_data[h][i*28 + j] + k)/(raw_data[h][0] + v*k) );
                     }
                     else{
-                        posterior[h] += log( ( 1 - final_data[h][i*28 + j] ) );
+                        posterior[h] += log( (1.0*raw_data[h][0] - raw_data[h][i*28 + j] + k)/(raw_data[h][0] + v*k) );
                     }
                 }
             }
@@ -99,11 +104,23 @@ int main(){
                 num_dec = h;
             }
         }
+        confusion[num][num_dec]++;
         if(num != num_dec){
             error++;
+            error_digit[num]++;
         }
     }
-    printf("error rate:%f\n", error/(float)total);
+    printf("OverAll:%f\n", 1- error/(float)total);
+    for(int i = 0; i < 10; ++i){
+        printf("%d:%f\n", i, 1- error_digit[i]/(float)total_digit[i]);
+    }
+    for(int i = 0; i < 10; ++i){
+        for(int j = 0; j < 10; ++j){
+            printf("%f ", confusion[i][j]/(float)total_digit[i]);
+        }
+        printf("\n");
+    }
+    
     
     fclose(pf_test_data);
     fclose(pf_test_label);
