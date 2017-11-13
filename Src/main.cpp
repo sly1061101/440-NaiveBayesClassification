@@ -12,33 +12,36 @@
 #include <math.h>
 
 #define k 0.1
-#define v 2
+#define v 5
+#define row_size 13
+#define col_size 30
+#define num_class 5
 
 int main(){
-    char data[28][29] = {0};
+    char dummy[row_size+1] = {0};
+    char data[col_size][row_size+1] = {0};
     char label[2] = {0};
-    int raw_data[10][785] = {0};
-    float final_data[10][785] = {0};
-    
-    int it = 0;
+    int raw_data[num_class][row_size*col_size+1] = {0};
     
     FILE *pf_data;
     FILE *pf_label;
-    pf_data = fopen("trainingimages", "r");
-    pf_label = fopen("traininglabels", "r");
+    pf_data = fopen("training_data.txt", "r");
+    pf_label = fopen("training_labels.txt", "r");
     
     while( fread(label, sizeof(char), 2, pf_label) != 0 ){
-        it++;
-        for(int i = 0; i < 28; ++i){
-            fread(data[i], sizeof(char), 29, pf_data);
+        for(int i = 0; i < col_size; ++i){
+            fread(data[i], sizeof(char), row_size + 1, pf_data);
         }
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
         int num;
         num = label[0] - '0';
         raw_data[num][0]++;
-        for(int i = 0; i < 28; ++i){
-            for(int j = 0; j < 28; ++j){
-                if( (data[i][j] == '#') || (data[i][j] == '+') ){
-                    raw_data[num][i * 28 + j + 1]++;
+        for(int i = 0; i < col_size; ++i){
+            for(int j = 0; j < row_size; ++j){
+                if( data[i][j] != ' ' ){
+                    raw_data[num][i * row_size + j + 1]++;
                 }
             }
         }
@@ -49,7 +52,7 @@ int main(){
     //calculate p(class) and p(feature == 1 | class)
     float total_class = 0;
 
-    for(int i = 0; i < 10; ++i){
+    for(int i = 0; i < num_class; ++i){
         total_class += raw_data[i][0];
     }
 //    for(int i = 0; i < 10; ++i){
@@ -67,35 +70,38 @@ int main(){
     
     int total = 0;
     int error = 0;
-    int total_digit[10] = {0};
-    int error_digit[10] = {0};
-    int confusion[10][10] = {0};
+    int total_digit[num_class] = {0};
+    int error_digit[num_class] = {0};
+    int confusion[num_class][num_class] = {0};
     
     FILE *pf_test_data;
     FILE *pf_test_label;
-    pf_test_data = fopen("testimages", "r");
-    pf_test_label = fopen("testlabels", "r");
+    pf_test_data = fopen("testing_data.txt", "r");
+    pf_test_label = fopen("testing_labels.txt", "r");
     while( fread(label, sizeof(char), 2, pf_test_label) != 0 ){
         total++;
         int num;
         num = label[0] - '0';
         total_digit[num]++;
         
-        for(int i = 0; i < 28; ++i){
-            fread(data[i], sizeof(char), 29, pf_test_data);
+        for(int i = 0; i < col_size; ++i){
+            fread(data[i], sizeof(char), row_size+1, pf_test_data);
         }
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
         
         float max = -99999999999999;
         int num_dec = 0;
-        for(int h = 0; h < 10; h++){
+        for(int h = 0; h < num_class; h++){
             posterior[h] = log( raw_data[h][0] / total_class );//final_data[h][0];
-            for(int i = 0; i < 28; ++i){
-                for(int j = 0; j < 28; ++j){
-                    if( (data[i][j] == '#') || (data[i][j] == '+') ){
-                        posterior[h] += log( (1.0*raw_data[h][i*28 + j] + k)/(raw_data[h][0] + v*k) );
+            for(int i = 0; i < col_size; ++i){
+                for(int j = 0; j < row_size; ++j){
+                    if( data[i][j] != ' ' ){
+                        posterior[h] += log( (1.0*raw_data[h][i*row_size + j] + k)/(raw_data[h][0] + v*k) );
                     }
                     else{
-                        posterior[h] += log( (1.0*raw_data[h][0] - raw_data[h][i*28 + j] + k)/(raw_data[h][0] + v*k) );
+                        posterior[h] += log( (1.0*raw_data[h][0] - raw_data[h][i*row_size + j] + k)/(raw_data[h][0] + v*k) );
                     }
                 }
             }
@@ -111,11 +117,11 @@ int main(){
         }
     }
     printf("OverAll:%f\n", 1- error/(float)total);
-    for(int i = 0; i < 10; ++i){
+    for(int i = 0; i < num_class; ++i){
         printf("%d:%f\n", i, 1- error_digit[i]/(float)total_digit[i]);
     }
-    for(int i = 0; i < 10; ++i){
-        for(int j = 0; j < 10; ++j){
+    for(int i = 0; i < num_class; ++i){
+        for(int j = 0; j < num_class; ++j){
             printf("%f ", confusion[i][j]/(float)total_digit[i]);
         }
         printf("\n");
@@ -126,6 +132,3 @@ int main(){
     fclose(pf_test_label);
     
 }
-
-
-
