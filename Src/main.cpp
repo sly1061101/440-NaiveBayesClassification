@@ -12,15 +12,15 @@
 #include <math.h>
 #include <vector>
 
-#define n 2
-#define m 2
+#define n 1
+#define m 1
 #define IsDisjoint true
 
-#define k 0.5
+#define k 0.1
 #define v pow(2,m*n)
-#define row_size 28
-#define col_size 28
-#define num_class 10
+#define row_size 10
+#define col_size 25
+#define num_class 2
 
 int main(){
     char dummy[row_size+1] = {0};
@@ -48,19 +48,19 @@ int main(){
     }
     
     FILE *pf_data;
-    FILE *pf_label;
-    pf_data = fopen("trainingimages", "r");
-    pf_label = fopen("traininglabels", "r");
+    //FILE *pf_label;
+    pf_data = fopen("yes_train.txt", "r");
+    //pf_label = fopen("yesno_train_label", "r");
     
-    while( fread(label, sizeof(char), 2, pf_label) != 0 ){
-        for(int i = 0; i < col_size; ++i){
+    while( fread(data[0], sizeof(char), row_size + 1, pf_data) != 0 ){
+        for(int i = 1; i < col_size; ++i){
             fread(data[i], sizeof(char), row_size + 1, pf_data);
         }
-//        fread(dummy, sizeof(char), 1, pf_data);
-//        fread(dummy, sizeof(char), 1, pf_data);
-//        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
         int num;
-        num = label[0] - '0';
+        num = 1;
         training_data[num][0][0]++;
         if(IsDisjoint){
             for(int i = 0; i < col_size/n; ++i){
@@ -97,7 +97,57 @@ int main(){
         
     }
     fclose(pf_data);
-    fclose(pf_label);
+    //fclose(pf_label);
+    
+    pf_data = fopen("no_train.txt", "r");
+    //pf_label = fopen("yesno_train_label", "r");
+    
+    while( fread(data[0], sizeof(char), row_size + 1, pf_data) != 0 ){
+        for(int i = 1; i < col_size; ++i){
+            fread(data[i], sizeof(char), row_size + 1, pf_data);
+        }
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        int num;
+        num = 0;
+        training_data[num][0][0]++;
+        if(IsDisjoint){
+            for(int i = 0; i < col_size/n; ++i){
+                for(int j = 0; j < row_size/m; ++j){
+                    int hashVal=0;
+                    for(int p = 0; p<n; ++p){
+                        for(int q=0; q<m; ++q){
+                            patch[p][q] = data[i*n+p][j*m+q];
+                            if(patch[p][q] != ' '){
+                                hashVal += pow(2,m*p+q);
+                            }
+                        }
+                    }
+                    training_data[num][(row_size/m)*i+j+1][hashVal]++;
+                }
+            }
+        }
+        else{
+            for(int i = 0; i < col_size-n+1; ++i){
+                for(int j = 0; j < row_size-m+1; ++j){
+                    int hashVal=0;
+                    for(int p = 0; p<n; ++p){
+                        for(int q=0; q<m; ++q){
+                            patch[p][q] = data[i+p][j+q];
+                            if(patch[p][q] != ' '){
+                                hashVal += pow(2,m*p+q);
+                            }
+                        }
+                    }
+                    training_data[num][(row_size-m+1)*i+j+1][hashVal]++;
+                }
+            }
+        }
+        
+    }
+    fclose(pf_data);
+    //fclose(pf_label);
     
     float total_class = 0;
 
@@ -115,21 +165,21 @@ int main(){
     int confusion[num_class][num_class] = {0};
     
     FILE *pf_test_data;
-    FILE *pf_test_label;
-    pf_test_data = fopen("testimages", "r");
-    pf_test_label = fopen("testlabels", "r");
-    while( fread(label, sizeof(char), 2, pf_test_label) != 0 ){
+    //FILE *pf_test_label;
+    pf_test_data = fopen("yes_test.txt", "r");
+    //pf_test_label = fopen("yesno_test_label.txt", "r");
+    while( fread(data[0], sizeof(char), row_size+1, pf_test_data) != 0 ){
         total++;
         int num;
-        num = label[0] - '0';
+        num = 1;
         total_digit[num]++;
         
-        for(int i = 0; i < col_size; ++i){
+        for(int i = 1; i < col_size; ++i){
             fread(data[i], sizeof(char), row_size+1, pf_test_data);
         }
-//        fread(dummy, sizeof(char), 1, pf_data);
-//        fread(dummy, sizeof(char), 1, pf_data);
-//        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
         
         float max = -99999999999999;
         int num_dec = 0;
@@ -179,7 +229,72 @@ int main(){
         }
     }
     fclose(pf_test_data);
-    fclose(pf_test_label);
+    //fclose(pf_test_label);
+    
+    pf_test_data = fopen("no_test.txt", "r");
+    //pf_test_label = fopen("yesno_test_label.txt", "r");
+    while( fread(data[0], sizeof(char), row_size+1, pf_test_data) != 0 ){
+        total++;
+        int num;
+        num = 0;
+        total_digit[num]++;
+        
+        for(int i = 1; i < col_size; ++i){
+            fread(data[i], sizeof(char), row_size+1, pf_test_data);
+        }
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        fread(dummy, sizeof(char), 1, pf_data);
+        
+        float max = -99999999999999;
+        int num_dec = 0;
+        for(int h = 0; h < num_class; h++){
+            posterior[h] = log( 1.0*training_data[h][0][0] / total_class );
+            if(IsDisjoint){
+                for(int i = 0; i < col_size/n; ++i){
+                    for(int j = 0; j < row_size/m; ++j){
+                        int hashVal=0;
+                        for(int p = 0; p<n; ++p){
+                            for(int q=0; q<m; ++q){
+                                patch[p][q] = data[i*n+p][j*m+q];
+                                if(patch[p][q] != ' '){
+                                    hashVal += pow(2,m*p+q);
+                                }
+                            }
+                        }
+                        posterior[h] +=log( (1.0*training_data[h][(row_size/m)*i+j+1][hashVal] + k) / (training_data[h][0][0] + k*v) );
+                    }
+                }
+            }
+            else{
+                for(int i = 0; i < col_size-n+1; ++i){
+                    for(int j = 0; j < row_size-m+1; ++j){
+                        int hashVal=0;
+                        for(int p = 0; p<n; ++p){
+                            for(int q=0; q<m; ++q){
+                                patch[p][q] = data[i+p][j+q];
+                                if(patch[p][q] != ' '){
+                                    hashVal += pow(2,m*p+q);
+                                }
+                            }
+                        }
+                        posterior[h] +=log( (1.0*training_data[h][(row_size-m+1)*i+j+1][hashVal] + k) / (training_data[h][0][0] + k*v) );
+                    }
+                }
+            }
+            if(posterior[h] > max){
+                max = posterior[h];
+                num_dec = h;
+            }
+        }
+        confusion[num][num_dec]++;
+        if(num != num_dec){
+            error++;
+            error_digit[num]++;
+        }
+    }
+    fclose(pf_test_data);
+    //fclose(pf_test_label);
     
     printf("OverAll:\n%f\n", 1- error/(float)total);
     printf("Accuracy for each digit:\n");
