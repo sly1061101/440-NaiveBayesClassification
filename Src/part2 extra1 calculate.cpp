@@ -16,7 +16,7 @@
 #define m 1
 #define IsDisjoint true
 
-#define k 0.5
+#define k 0.02
 #define v pow(2,m*n)
 #define row_size 10
 #define col_size 25
@@ -108,7 +108,7 @@ int main(){
     }
     
     //calculate the posteriors and make the decision
-    float posterior[10] = {0};
+    float posterior[num_class] = {0};
     
     int total = 0;
     int error = 0;
@@ -117,60 +117,22 @@ int main(){
     int confusion[num_class][num_class] = {0};
     
     char filename[100][40];
-    int num;
-    num = GetFileName("./yesno_unsegmented/yes_test/",filename);
+    int num_file;
+    num_file = GetFileName("./yesno_unsegmented/yes_test/",filename);
     
-    FILE *pf_test_data;
-    FILE *pf_test_label;
-    pf_test_data = fopen("testimages", "r");
-    pf_test_label = fopen("testlabels", "r");
-    for(int p = 0; p<num; ++p){
+    for(int r = 0; r<num_file; ++r){
         FILE *pf;
         char currentfile[40] = "./yesno_unsegmented/yes_test/";
-        strcat(currentfile, filename[p]);
+        strcat(currentfile, filename[r]);
         pf = fopen( currentfile , "r");
         for(int j = 0; j < col_size; ++j){
             fread(data[j], sizeof(char), row_size+1, pf);
         }
-        fread(dummy, sizeof(char), 1, pf_data);
-        fread(dummy, sizeof(char), 1, pf_data);
-        fread(dummy, sizeof(char), 1, pf_data);
-
-        float max = -99999999999999;
-        int num_dec = 0;
-        for(int h = 0; h < num_class; h++){
-            posterior[h] = log( 1.0*training_data[h][0][0] / total_class );
-            for(int i = 0; i<col_size; ++i){
-                int num_high = 0;
-                for(int j = 0; j<row_size; ++j)
-                    if(data[i][j] == ' ')
-                        num_high++;
-                posterior[h] +=log( (1.0*training_data[h][i+1][num_high] + k) / (training_data[h][0][0] + k*v) );
-            }
-            if(posterior[h] > max){
-                max = posterior[h];
-                num_dec = h;
-            }
-        }
-        confusion[num][num_dec]++;
-        if(num != num_dec){
-            error++;
-            error_digit[num]++;
-        }
         
-    }
-    while( fread(label, sizeof(char), 2, pf_test_label) != 0 ){
         total++;
-        int num;
-        num = label[0] - '0';
-        total_digit[num]++;
+        int num = 1;
         
-        for(int i = 0; i < col_size; ++i){
-            fread(data[i], sizeof(char), row_size+1, pf_test_data);
-        }
-        //        fread(dummy, sizeof(char), 1, pf_data);
-        //        fread(dummy, sizeof(char), 1, pf_data);
-        //        fread(dummy, sizeof(char), 1, pf_data);
+        total_digit[num]++;
         
         float max = -99999999999999;
         int num_dec = 0;
@@ -218,10 +180,73 @@ int main(){
             error++;
             error_digit[num]++;
         }
+        
     }
-    fclose(pf_test_data);
-    fclose(pf_test_label);
     
+    num_file = GetFileName("./yesno_unsegmented/no_test/",filename);
+    
+    for(int r = 0; r<num_file; ++r){
+        FILE *pf;
+        char currentfile[40] = "./yesno_unsegmented/no_test/";
+        strcat(currentfile, filename[r]);
+        pf = fopen( currentfile , "r");
+        for(int j = 0; j < col_size; ++j){
+            fread(data[j], sizeof(char), row_size+1, pf);
+        }
+        
+        total++;
+        int num = 0;
+        total_digit[num]++;
+        
+        float max = -99999999999999;
+        int num_dec = 0;
+        for(int h = 0; h < num_class; h++){
+            posterior[h] = log( 1.0*training_data[h][0][0] / total_class );
+            if(IsDisjoint){
+                for(int i = 0; i < col_size/n; ++i){
+                    for(int j = 0; j < row_size/m; ++j){
+                        int hashVal=0;
+                        for(int p = 0; p<n; ++p){
+                            for(int q=0; q<m; ++q){
+                                patch[p][q] = data[i*n+p][j*m+q];
+                                if(patch[p][q] != ' '){
+                                    hashVal += pow(2,m*p+q);
+                                }
+                            }
+                        }
+                        posterior[h] +=log( (1.0*training_data[h][(row_size/m)*i+j+1][hashVal] + k) / (training_data[h][0][0] + k*v) );
+                    }
+                }
+            }
+            else{
+                for(int i = 0; i < col_size-n+1; ++i){
+                    for(int j = 0; j < row_size-m+1; ++j){
+                        int hashVal=0;
+                        for(int p = 0; p<n; ++p){
+                            for(int q=0; q<m; ++q){
+                                patch[p][q] = data[i+p][j+q];
+                                if(patch[p][q] != ' '){
+                                    hashVal += pow(2,m*p+q);
+                                }
+                            }
+                        }
+                        posterior[h] +=log( (1.0*training_data[h][(row_size-m+1)*i+j+1][hashVal] + k) / (training_data[h][0][0] + k*v) );
+                    }
+                }
+            }
+            if(posterior[h] > max){
+                max = posterior[h];
+                num_dec = h;
+            }
+        }
+        confusion[num][num_dec]++;
+        if(num != num_dec){
+            error++;
+            error_digit[num]++;
+        }
+        
+    }
+
     printf("OverAll:\n%f\n", 1- error/(float)total);
     printf("Accuracy for each digit:\n");
     for(int i = 0; i < num_class; ++i){
@@ -257,4 +282,5 @@ int GetFileName(char *path, char file_list[][40]){
     closedir(dir);//关闭目录指针
     return i;
 }
+
 
