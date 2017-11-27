@@ -100,11 +100,11 @@ int main(){
     fclose(pf_label);
     
     float total_class = 0;
-    
+
     for(int i = 0; i < num_class; ++i){
         total_class += training_data[i][0][0];
     }
-    
+
     //calculate the posteriors and make the decision
     float posterior[10] = {0};
     
@@ -193,6 +193,5 @@ int main(){
         }
         printf("\n");
     }
-    
-}
 
+}
